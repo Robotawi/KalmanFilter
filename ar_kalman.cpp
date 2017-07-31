@@ -19,6 +19,11 @@ public:
   ArKalman()
   {
     aruco_sub = n.subscribe("/ros_aruco/markers", 1000, &ArKalman::arucoCallback, this);
+    //this argument is to designate this objects member callback function as the target callback function.
+    //in other cases you may define to objects, and want to make the 1st object use the callback function of the second object. 
+    //this will hapend in main Listener listener_1 listener_2
+    //ros::Subscriber sub = n.subscribe("chatter", 1000, &Listener::callback, &listener_2);
+    
     kalman_pub = n.advertise<ros_aruco::Markers>(ros::this_node::getName()+ "/markers",1);
     int nStates = 18;            // the number of states
     int nMeasurements = 6;       // the number of measured states
@@ -28,13 +33,14 @@ public:
     initKalmanFilter(ArKF, nStates, nMeasurements, nInputs, dt);    // init function
   }
   
-  ~ArKalman()
+  ~ArKalman() // may be this is needed for the dynamic allocation to deallocate the space. Search more.
   {
   }
 
   void arucoCallback(const ros_aruco::MarkersConstPtr& msg)
   {
     ros_aruco::MarkersPtr msg_pub(new ros_aruco::Markers);
+    //to be dynamically allocated, because we don't know the size of it in the compile time.
     msg_pub->header = msg->header;
     msg_pub->count = msg->count;
     msg_pub->ids.resize(msg->count);
