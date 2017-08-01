@@ -49,6 +49,8 @@ public:
     msg_pub->px.resize(2*msg->count);
 
     if(msg->count == 1)
+     //because if it equals zero, we will access somewhere that exceeds the array dimention.
+     //this proggy is made to use only one marker
     {
       // Get the measured translation
       cv::Mat translation_measured(3, 1, CV_64F);
@@ -56,17 +58,20 @@ public:
       translation_measured.at<double>(1) = msg->T[1];
       translation_measured.at<double>(2) = msg->T[2];
 
-      // Get the measured rotation
+      // Get the measured rotation, it is in rodrigues forumula
       cv::Mat rot_rodrigues_measured(3, 1, CV_64F);
       rot_rodrigues_measured.at<double>(0) = msg->R[0];
       rot_rodrigues_measured.at<double>(1) = msg->R[1];
       rot_rodrigues_measured.at<double>(2) = msg->R[2];
 
       cv::Mat rotation_measured(3, 3, CV_64F);
-
+      
+      //get the rotation matrix representation
       cv::Rodrigues(rot_rodrigues_measured, rotation_measured);
+      
       // fill the measurements vector
       cv::Mat measurements(6, 1, CV_64F);
+      //what happens here
       fillMeasurements(measurements, translation_measured, rotation_measured);
 
       // Instantiate estimated translation and rotation
@@ -97,6 +102,7 @@ public:
   void initKalmanFilter(cv::KalmanFilter &KF, int nStates, int nMeasurements, int nInputs, double dt)
   {
     KF.init(nStates, nMeasurements, nInputs, CV_64F);                 // init Kalman Filter
+    //set ideneity sets a scaled identity matrix, the scalar is the 2nd field
     cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(1e-5));       // set process noise
     cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1e-4));   // set measurement noise
     cv::setIdentity(KF.errorCovPost, cv::Scalar::all(1));             // error covariance
@@ -135,7 +141,7 @@ public:
     KF.transitionMatrix.at<double>(11,14) = dt;
     KF.transitionMatrix.at<double>(12,15) = dt;
     KF.transitionMatrix.at<double>(13,16) = dt;
-    KF.transitionMatrix.at<double>(14,17) = dt;
+    KF.transitionMatrix.at<double>(14,17) = dt;cv::Scalar::all
     KF.transitionMatrix.at<double>(9,15) = 0.5*pow(dt,2);
     KF.transitionMatrix.at<double>(10,16) = 0.5*pow(dt,2);
     KF.transitionMatrix.at<double>(11,17) = 0.5*pow(dt,2);
@@ -155,8 +161,9 @@ public:
   }  
 
   void fillMeasurements( cv::Mat &measurements,
-                     const cv::Mat &translation_measured, const cv::Mat &rotation_measured)
-  {
+                     const cv::Mat &translation_measured, const cv::Mat &rotation_measuredcv::Scalar::all)
+  {   // Here happens the 2nd conversion (from rot_matrix to euler angle)
+      // May be because we need 3 angles ??
       // Convert rotation matrix to euler angles
       cv::Mat measured_eulers(3, 1, CV_64F);
       measured_eulers = rot2euler(rotation_measured);
@@ -164,6 +171,7 @@ public:
       measurements.at<double>(0) = translation_measured.at<double>(0); // x
       measurements.at<double>(1) = translation_measured.at<double>(1); // y
       measurements.at<double>(2) = translation_measured.at<double>(2); // z
+      // Those are the three angles
       measurements.at<double>(3) = measured_eulers.at<double>(0);      // roll
       measurements.at<double>(4) = measured_eulers.at<double>(1);      // pitch
       measurements.at<double>(5) = measured_eulers.at<double>(2);      // yaw
@@ -173,7 +181,9 @@ public:
                        cv::Mat &translation_estimated, cv::Mat &rotation_estimated )
   {
       // First predict, to update the internal statePre variable
+      // It takes no arguments as the control input is zero
       cv::Mat prediction = KF.predict();
+    
       // The "correct" phase that is going to use the predicted value and our measurement
       cv::Mat estimated = KF.correct(measurement);
       // Estimated translation
@@ -200,7 +210,7 @@ public:
     double m12 = rotationMatrix.at<double>(1,2);
     double m20 = rotationMatrix.at<double>(2,0);
     double m22 = rotationMatrix.at<double>(2,2);
-  
+  cv::Scalar::all
     double x, y, z;
   
     // Assuming the angles are in radians.
