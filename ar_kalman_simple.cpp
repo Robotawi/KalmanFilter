@@ -9,12 +9,12 @@ class ArKalman{
   ros::NodeHandle n;
   ros::Subscriber aruco_sub;
   ros::Publisher kalman_pub;
-  cv::KalmanFilter ArKF;
+  cv::KalmanFilter KF;
   
 public:
-  ArKalam(){
-    aruco_sub=n.subscribe("/ros_aruco/markers", 1000, &ArKalman::arucoCallback, this);
-    kalman_pup=n.advertise<ros_aruco::Markers>(ros::this_node::getName()+ "/markers",1);
+  ArKalman(){
+    aruco_sub = n.subscribe("/ros_aruco/markers", 1000, &ArKalman::arucoCallback, this);
+    kalman_pub = n.advertise<ros_aruco::Markers>(ros::this_node::getName()+ "/markers",1);
     int nStates = 18;            // the number of states
     int nMeasurements = 6;       // the number of measured states
     int nInputs = 0;             // the number of action control
@@ -62,7 +62,7 @@ public:
     KF.transitionMatrix.at<double>(11,14) = dt;
     KF.transitionMatrix.at<double>(12,15) = dt;
     KF.transitionMatrix.at<double>(13,16) = dt;
-    KF.transitionMatrix.at<double>(14,17) = dt;cv::Scalar::all
+    KF.transitionMatrix.at<double>(14,17) = dt;
     KF.transitionMatrix.at<double>(9,15) = 0.5*pow(dt,2);
     KF.transitionMatrix.at<double>(10,16) = 0.5*pow(dt,2);
     KF.transitionMatrix.at<double>(11,17) = 0.5*pow(dt,2);
@@ -79,6 +79,9 @@ public:
     KF.measurementMatrix.at<double>(3,9) = 1;  // roll
     KF.measurementMatrix.at<double>(4,10) = 1; // pitch
     KF.measurementMatrix.at<double>(5,11) = 1; // yaw
+}
+
+~ArKalman(){
 }
 
 void arucoCallback(const ros_aruco::MarkersConstPtr& msg)
@@ -128,23 +131,20 @@ void arucoCallback(const ros_aruco::MarkersConstPtr& msg)
       measurements.at<double>(3) = measured_eulers.at<double>(0);      // roll
       measurements.at<double>(4) = measured_eulers.at<double>(1);      // pitch
       measurements.at<double>(5) = measured_eulers.at<double>(2);      // yaw
-  }
-      
-      ////
 
       // Instantiate estimated translation and rotation
       cv::Mat translation_estimated(3, 1, CV_64F);
       cv::Mat rotation_estimated(3, 3, CV_64F);
       // Make kalman filter do it its job
       // update the Kalman filter with good measurements
-      //updateKalmanFilter(ArKF, measurements,translation_estimated, rotation_estimated);
+      //updateKalmanFilter(KF, measurements,translation_estimated, rotation_estimated);
       ////
       // First predict, to update the internal statePre variable
       // It takes no arguments as the control input is zero
-      cv::Mat prediction = ArKF.predict();
+      cv::Mat prediction = KF.predict();
     
       // The "correct" phase that is going to use the predicted value and our measurement
-      cv::Mat estimated = ArKF.correct(measurement);
+      cv::Mat estimated = KF.correct(measurements);
       // Estimated translation
       translation_estimated.at<double>(0) = estimated.at<double>(0);
       translation_estimated.at<double>(1) = estimated.at<double>(1);
@@ -171,9 +171,11 @@ void arucoCallback(const ros_aruco::MarkersConstPtr& msg)
 
       msg_pub->ids[0] = msg->ids[0];
       
-    }
 
     kalman_pub.publish(msg_pub);
+  }//end of if
+
+
   }
 
 
@@ -188,7 +190,7 @@ void arucoCallback(const ros_aruco::MarkersConstPtr& msg)
     double m12 = rotationMatrix.at<double>(1,2);
     double m20 = rotationMatrix.at<double>(2,0);
     double m22 = rotationMatrix.at<double>(2,2);
-  cv::Scalar::all
+
     double x, y, z;
   
     // Assuming the angles are in radians.
